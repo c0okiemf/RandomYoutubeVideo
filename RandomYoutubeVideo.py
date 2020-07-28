@@ -3,34 +3,33 @@ import urllib.request
 import webbrowser
 import time
 import json
+from pprint import pprint
+from venv import logger
 
 
-def fetch_links(channel_id, key):
+def fetch_links(playlist_id, key):
     base_video_url = 'https://www.youtube.com/watch?v='
-    base_search_url = 'https://www.googleapis.com/youtube/v3/search?'
+    base_search_url = 'https://www.googleapis.com/youtube/v3/playlistItems?'
 
     first_url = \
-        base_search_url + 'key={}&channelId={}&part=snippet,id&order=date&maxResults=50'.format(key, channel_id)
+        base_search_url + 'key={}&playlistId={}&part=snippet&maxResults=50'.format(key, playlist_id)
 
     video_links = []
     url = first_url
-    ctr = 0
     try:
-        while True:
+        for x in range(0, 30):
             inp = urllib.request.urlopen(url)
             resp = json.load(inp)
             for i in resp['items']:
-                if i['id']['kind'] == "youtube#video":
-                    video_links.append(base_video_url + i['id']['videoId'])
-            next_page_token = resp['nextPageToken']
-            if next_page_token == '' or ctr > 10:
+                if i['snippet']['resourceId']['kind'] == "youtube#video":
+                    video_links.append(base_video_url + i['snippet']['resourceId']['videoId'])
+            if 'nextPageToken' not in resp or resp['nextPageToken'] == '':
                 break
-            url = first_url + '&pageToken={}'.format(next_page_token)
-            ctr += 1
+            url = first_url + '&pageToken={}'.format(resp['nextPageToken'])
         return video_links
     except Exception as e:
-        print(str(e))
-        return [1, 1]
+        logger.exception("Response is wrong...")
+        return []
 
 
 try:
@@ -45,7 +44,7 @@ if not links:
     try:
         key_file = open("key", "r")
         api_key = key_file.readline()
-        links = fetch_links('UCdbcyBj6OO8lGMDQul1ansQ', api_key)
+        links = fetch_links('UUdbcyBj6OO8lGMDQul1ansQ', api_key)
         file = open("links", "w")
         for link in links:
             file.write('%s\n' % link)
@@ -54,4 +53,8 @@ if not links:
         print("File \"key\" not found or corrupted, aborting...")
         time.sleep(3)
 
-webbrowser.open(random.choice(links), new=2)
+if len(links) > 0:
+    webbrowser.open(random.choice(links), new=2)
+else:
+    print("No links available")
+    time.sleep(3)
